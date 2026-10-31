@@ -2,6 +2,7 @@
 #include "helpers.h"
 #include "poll.h"
 #include "graphics.h"
+#include "startup.h"
 #include <dxgi.h>
 
 bool isTerminal   = false;
@@ -561,8 +562,10 @@ DllMain (HMODULE module, DWORD reason, LPVOID reserved) {
 			}
 			// clang-format on
 
+			ConfigureStartup (config, offlineMode);
 			toml_free (config);
 		}
+		else ConfigureStartup (nullptr, offlineMode);
 		Log ("Loader", "INFO", "Configuration terminal=%u offline=%u movies=%u skipTerminal=%u resolution=%dx%d", isTerminal, offlineMode, movies, skipTerminal, xRes, yRes);
 		if (!std::filesystem::exists (".\\card.ini")) createCard ();
 		GetPrivateProfileStringA ("card", "accessCode", accessCode, accessCode, 21, ".\\card.ini");
@@ -572,6 +575,8 @@ DllMain (HMODULE module, DWORD reason, LPVOID reserved) {
 		INSTALL_HOOK (DbCreate);
 		INSTALL_HOOK (LoadCrown);
 		INSTALL_HOOK (DebugPrint);
+		InstallRuntimeDiagnostics ();
+		InstallStartupHooks ();
 		if (offlineMode) {
 			INSTALL_HOOK (InitializeAmAuth);
 			INSTALL_HOOK (UpdateRaceNeighbors);

@@ -42,6 +42,32 @@ Build output, download caches, and machine-specific toolchain settings are exclu
 - [RULES.md](RULES.md): English-only content and contribution policy.
 - [AGENTS.md](AGENTS.md): contribution workflow, Git identity, and privacy checks.
 
+Startup options are top-level keys in `config.toml`, before any section header:
+
+```toml
+offline = true
+ignoreOfflineTimeLimit = true
+fastBoot = true
+```
+
+`ignoreOfflineTimeLimit` disables the offline uptime restriction when `offline`
+is enabled. `fastBoot` omits the initial diagnostic view and selects the native
+short presentation path. Required initialization and resource loading continue
+normally. Set either option to `false` to retain its native behavior.
+
+## Runtime diagnostics
+
+Launch with `Start-6RR.cmd` to append runtime diagnostics to `WAL.log` beside the
+executable. The launcher captures standard output, standard error, and the final
+process exit code, including abrupt termination. The loader also records native
+runtime messages, Windows debug output, and exception details.
+
+The log supports concurrent readers and preserves earlier sessions. Common
+credential fields, local paths, email addresses, and long numeric identifiers
+are redacted before new entries are written. Keep logs local and review them
+before sharing. Process-exit monitoring requires the included launcher to stay
+running; messages never emitted by the process cannot be recovered from a log.
+
 Keep personal configuration, imported profiles, diagnostic logs, and backups local. Remove personal paths, account information, device identifiers, and other sensitive data before submitting reports or changes.
 
 ## Usage and distribution terms

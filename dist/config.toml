@@ -1,5 +1,7 @@
 terminal = false
 offline = true
+ignoreOfflineTimeLimit = true
+fastBoot = true
 movies = false
 skipTerminal = true
 windowed = true

@@ -32,9 +32,18 @@ shared_library(
 		'src/dllmain.cpp',
 		'src/helpers.cpp',
 		'src/logging.cpp',
+		'src/startup.cpp',
 		'src/graphics.cpp',
 		'src/poll.cpp',
 		'src/hooks.asm',
 	],
 	name_prefix: ''
+)
+
+executable(
+  'runtime-log-smoke',
+  sources: ['tests/runtime-log-smoke.cpp', 'src/logging.cpp', 'src/helpers.cpp'],
+  include_directories: 'src',
+  dependencies: [minhook.get_variable('minhook_dep'),
+                 tomlc99.get_variable('tomlc99_dep'), cpp.find_library('ws2_32')],
 )
