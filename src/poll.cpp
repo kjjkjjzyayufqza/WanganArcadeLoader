@@ -12,6 +12,8 @@ struct {
     {"O", 'O'},          {"P", 'P'},           {"A", 'A'},      {"S", 'S'},      {"D", 'D'},        {"F", 'F'},      {"G", 'G'},    {"H", 'H'},       {"J", 'J'},        {"K", 'K'},
     {"L", 'L'},          {"Z", 'Z'},           {"X", 'X'},      {"C", 'C'},      {"V", 'V'},        {"B", 'B'},      {"N", 'N'},    {"M", 'M'},       {"UPARROW", VK_UP}, {"LEFTARROW", VK_LEFT},
     {"DOWNARROW", VK_DOWN}, {"RIGHTARROW", VK_RIGHT}, {"ENTER", VK_RETURN}, {"SPACE", VK_SPACE}, {"CONTROL", VK_CONTROL}, {"SHIFT", VK_SHIFT}, {"TAB", VK_TAB}, {"ESCAPE", VK_ESCAPE},
+    {"LALT", VK_LMENU}, {"RALT", VK_RMENU}, {"LSHIFT", VK_LSHIFT}, {"RSHIFT", VK_RSHIFT},
+    {"LCONTROL", VK_LCONTROL}, {"RCONTROL", VK_RCONTROL},
 };
 
 struct {
@@ -271,7 +273,7 @@ DisposePoll () {
 
 ConfigValue
 StringToConfigEnum (const char *value) {
-	ConfigValue rval;
+	ConfigValue rval{};
 	for (int i = 0; i < COUNTOFARR (ConfigKeyboardButtons); ++i)
 		if (!strcmp (value, ConfigKeyboardButtons[i].string)) {
 			rval.type    = keycode;

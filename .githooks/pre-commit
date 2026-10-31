@@ -1,0 +1,2 @@
+#!/bin/sh
+exec python scripts/check-repo-privacy.py --staged

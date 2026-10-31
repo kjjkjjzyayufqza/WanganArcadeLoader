@@ -1,9 +1,11 @@
 #include "dllmain.h"
 #include "helpers.h"
 #include "poll.h"
+#include "graphics.h"
 #include <dxgi.h>
 
 bool isTerminal   = false;
+bool offlineMode  = true;
 HWND windowHandle = 0;
 
 typedef void (*callbackTouch) (i32, i32, u8[168], u64);
@@ -193,19 +195,69 @@ HOOK (void *, LoadCrown, ASLR (0x1409B39C0), u64 a1, i32 a2, u64 a3) {
 }
 
 HOOK (void, DebugPrint, ASLR (0x1409BCD80), u64 a1, i32 a2, wstring *str) {
-	wchar_t prefix[32] = L"";
-	if (a2 == 1) wcscpy (prefix, L"[Info]");
-	else if (a2 == 2) wcscpy (prefix, L"[Warning]");
-	else if (a2 == 3) wcscpy (prefix, L"[Check]");
-	else if (a2 == 4) wcscpy (prefix, L"[Error]");
-	wprintf (L"%ls%ls", prefix, str->c_str ());
+	const char *level = a2 == 2 ? "WARN" : a2 == 3 ? "CHECK" : a2 == 4 ? "ERROR" : "INFO";
+	if (str) LogWide ("Game", level, str->c_str ());
+}
+
+// The game supports an absent AMAuth instance when initialized with index 0.
+// Using a cabinet index without the COM server instead produces Debug error 1
+// (E0001). Select the native absent-service path for standalone play.
+HOOK (bool, InitializeAmAuth, ASLR (0x140B44E30), void *self, u32 cabinetIndex) {
+	Log ("Loader", "INFO", "Offline AMAuth initialization: requested cabinet index=%u; using native disabled-service mode", cabinetIndex);
+	return originalInitializeAmAuth (self, 0);
+}
+
+bool
+OfflineNetworkReady () {
+	// sys::am singleton -> Impl. State 8 is the completed local initialization;
+	// the cable and gateway checks must both have reached state 3. Reporting
+	// readiness earlier lets the boot sequence consume unfinished asset loads.
+	auto service = READ_MEMORY (ASLR (0x141F30F18), u64);
+	if (!service) return false;
+	auto impl = READ_MEMORY (service, u64);
+	return impl && READ_MEMORY (impl + 0x620, u32) == 8 &&
+	       READ_MEMORY (impl + 0x5B8, u32) == 3 && READ_MEMORY (impl + 0x5BC, u32) == 3;
+}
+
+void
+UpdateOfflineBootCheck () {
+	if (!offlineMode || !OfflineNetworkReady ()) return;
+	auto information = READ_MEMORY (ASLR (0x141F00B78), u64);
+	if (!information) return;
+	auto system = READ_MEMORY (information + 0x1C8, u64);
+	if (!system) return;
+	// Native check table: 0x6e0 + index * 16; index 15 is the disabled
+	// AMAuth/LAN session. Update only pending state 0, leaving other checks
+	// and actual errors intact. Keep the optimized leaf getter unhooked: its
+	// native callers also depend on RDX surviving the call.
+	auto state = reinterpret_cast<u32 *> (system + 0x7D0);
+	if (*state == 0) {
+		*state = 2;
+		static std::atomic_flag logged = ATOMIC_FLAG_INIT;
+		if (!logged.test_and_set (std::memory_order_relaxed))
+			Log ("Loader", "INFO", "Offline boot: local network check ready; online authentication and server card saves are unavailable");
+	}
+}
+
+HOOK (void, UpdateRaceNeighbors, ASLR (0x14071C3B0), u64 self) {
+	// The attract demo can run before offline play has supplied a neighbor
+	// array. The original function dereferences this pointer at 0x14071C485.
+	if (!READ_MEMORY (self + 0x70, void *)) {
+		static std::atomic_flag logged = ATOMIC_FLAG_INIT;
+		if (!logged.test_and_set (std::memory_order_relaxed))
+			Log ("Loader", "INFO", "Offline attract: no neighbor car data yet; skipping its update");
+		return;
+	}
+	originalUpdateRaceNeighbors (self);
 }
 
 HOOK (HRESULT, CreateDeviceAndSwapChain, PROC_ADDRESS ("D3D11.dll", "D3D11CreateDeviceAndSwapChain"), void *pAdapter, i32 DriverType, HMODULE Software, u32 Flags, i32 *pFeatureLevels,
       u32 FeatureLevels, u32 SDKVersion, DXGI_SWAP_CHAIN_DESC *pSwapChainDesc, void **ppSwapChain, void **ppDevice, i32 *pFeatureLevel, void **ppImmediateContext) {
-	if (pSwapChainDesc) pSwapChainDesc->Windowed = true;
+	ApplyGraphicsSwapChainOptions (pSwapChainDesc);
 	HRESULT res =
 	    originalCreateDeviceAndSwapChain (pAdapter, DriverType, Software, Flags, pFeatureLevels, FeatureLevels, SDKVersion, pSwapChainDesc, ppSwapChain, ppDevice, pFeatureLevel, ppImmediateContext);
+	if (SUCCEEDED (res) && ppSwapChain && ppDevice)
+		AttachGraphicsHooks (static_cast<IDXGISwapChain *>(*ppSwapChain), static_cast<ID3D11Device *>(*ppDevice));
 	return res;
 }
 
@@ -250,6 +302,7 @@ Keybindings CardInsertBinding{.keycodes = {'P'}};
 
 HOOK (InputData *, WAJVGetInput, ASLR (0x140017890), u32 index) {
 	UpdatePoll (windowHandle);
+	UpdateOfflineBootCheck ();
 
 	if (IsButtonTapped (CardInsertBinding) && waitingForTouch) {
 		memcpy (cardData + 0x2C, chipId, 33);
@@ -303,6 +356,7 @@ HOOK (HWND, WindowCreateW, PROC_ADDRESS ("user32.dll", "CreateWindowExW"), int s
 		if (config) {
 			SetConfigValue (config, "TEST", &TestBinding);
 			SetConfigValue (config, "SERVICE", &ServiceBinding);
+			SetConfigValue (config, "START", &StartBinding);
 			SetConfigValue (config, "TEST_UP", &TestUpBinding);
 			SetConfigValue (config, "TEST_DOWN", &TestDownBinding);
 			SetConfigValue (config, "TEST_ENTER", &TestEnterBinding);
@@ -461,9 +515,7 @@ HOOK (u64, DongleCheck, ASLR (0x1409C2180), u64 a1) {
 BOOL
 DllMain (HMODULE module, DWORD reason, LPVOID reserved) {
 	if (reason == DLL_PROCESS_ATTACH) {
-		// debug stuff
-		AllocConsole ();
-		freopen ("CONOUT$", "w", stdout);
+		InitializeLog ();
 
 		wchar_t path[MAX_PATH];
 		GetModuleFileNameW (NULL, path, MAX_PATH);
@@ -472,23 +524,27 @@ DllMain (HMODULE module, DWORD reason, LPVOID reserved) {
 
 		auto configPath      = std::filesystem::current_path () / "config.toml";
 		toml_table_t *config = openConfig (configPath);
+		ConfigureGraphics (config);
 		bool movies          = true;
 		bool skipTerminal    = true;
-		bool windowed        = true;
 		bool hideTA          = false;
 		bool timerFreeze     = false;
 		char modDir[1024]    = "mods";
 		if (config) {
 			isTerminal   = readConfigBool (config, "terminal", isTerminal);
+			offlineMode  = readConfigBool (config, "offline", offlineMode);
 			movies       = readConfigBool (config, "movies", movies);
 			skipTerminal = readConfigBool (config, "skipTerminal", skipTerminal);
-			windowed     = readConfigBool (config, "windowed", windowed);
 			hideTA       = readConfigBool (config, "hideTA", hideTA);
 			timerFreeze  = readConfigBool (config, "timerFreeze", timerFreeze);
 			auto res     = openConfigSection (config, "res");
 			if (res) {
-				xRes  = readConfigInt (res, "x", xRes);
-				yRes  = readConfigInt (res, "y", yRes);
+				auto width = readConfigInt (res, "x", xRes);
+				auto height = readConfigInt (res, "y", yRes);
+				if (width >= 640 && width <= 8192 && height >= 360 && height <= 4320) {
+					xRes = static_cast<i32> (width);
+					yRes = static_cast<i32> (height);
+				}
 				ratio = 768.0 / (f32)yRes;
 			}
 			strcpy_s (modDir, readConfigString (config, "mods", modDir));
@@ -507,6 +563,7 @@ DllMain (HMODULE module, DWORD reason, LPVOID reserved) {
 
 			toml_free (config);
 		}
+		Log ("Loader", "INFO", "Configuration terminal=%u offline=%u movies=%u skipTerminal=%u resolution=%dx%d", isTerminal, offlineMode, movies, skipTerminal, xRes, yRes);
 		if (!std::filesystem::exists (".\\card.ini")) createCard ();
 		GetPrivateProfileStringA ("card", "accessCode", accessCode, accessCode, 21, ".\\card.ini");
 		GetPrivateProfileStringA ("card", "chipId", chipId, chipId, 33, ".\\card.ini");
@@ -515,7 +572,11 @@ DllMain (HMODULE module, DWORD reason, LPVOID reserved) {
 		INSTALL_HOOK (DbCreate);
 		INSTALL_HOOK (LoadCrown);
 		INSTALL_HOOK (DebugPrint);
-		if (windowed) INSTALL_HOOK (CreateDeviceAndSwapChain);
+		if (offlineMode) {
+			INSTALL_HOOK (InitializeAmAuth);
+			INSTALL_HOOK (UpdateRaceNeighbors);
+		}
+		INSTALL_HOOK (CreateDeviceAndSwapChain);
 
 		INSTALL_HOOK (HaspDecrypt);
 		INSTALL_HOOK (HaspEncrypt);
@@ -644,6 +705,8 @@ DllMain (HMODULE module, DWORD reason, LPVOID reserved) {
 				}
 			}
 		}
+		Log ("Loader", "INFO", "Initialization complete: mods=%zu plugins=%zu", modDirs.size (), plugins.size ());
 	}
+	if (reason == DLL_PROCESS_DETACH) ShutdownLog ();
 	return TRUE;
 }

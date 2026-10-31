@@ -10,6 +10,7 @@
 #include <stdlib.h>
 #include <toml.h>
 #include <windows.h>
+#include "logging.h"
 
 typedef int8_t i8;
 typedef int16_t i16;
@@ -47,9 +48,7 @@ const HMODULE MODULE_HANDLE = GetModuleHandle (nullptr);
 
 #define INSTALL_HOOK(functionName)                                                                                     \
 	{                                                                                                                  \
-		MH_Initialize ();                                                                                              \
-		MH_CreateHook ((void *)where##functionName, (void *)implOf##functionName, (void **)(&original##functionName)); \
-		MH_EnableHook ((void *)where##functionName);                                                                   \
+		InstallHook (#functionName, (void *)where##functionName, (void *)implOf##functionName, (void **)(&original##functionName)); \
 	}
 
 #define INSTALL_VTABLE_HOOK(className, object, functionName, functionIndex)                     \
@@ -58,7 +57,7 @@ const HMODULE MODULE_HANDLE = GetModuleHandle (nullptr);
 		INSTALL_HOOK (className##functionName);                                                 \
 	}
 
-#define READ_MEMORY(location, type) *(type *)location
+#define READ_MEMORY(location, type) (*(type *)(location))
 
 #define WRITE_MEMORY(location, type, ...)                                                        \
 	{                                                                                            \
@@ -110,3 +109,4 @@ bool readConfigBool (toml_table_t *table, const char *key, bool notFoundValue);
 int64_t readConfigInt (toml_table_t *table, const char *key, int64_t notFoundValue);
 char *readConfigString (toml_table_t *table, const char *key, char *notFoundValue);
 void printColour (int colour, const char *format, ...);
+bool InstallHook (const char *name, void *target, void *replacement, void **original);

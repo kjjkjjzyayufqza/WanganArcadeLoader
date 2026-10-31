@@ -1,8 +1,6 @@
 #include "helpers.h"
 #include <windows.h>
 
-void *consoleHandle = 0;
-
 toml_table_t *
 openConfig (std::filesystem::path path) {
 	if (!std::filesystem::exists (path) || !path.has_filename ()) {
@@ -76,11 +74,18 @@ printColour (int colour, const char *format, ...) {
 	va_list args;
 	va_start (args, format);
 
-	if (consoleHandle == 0) consoleHandle = GetStdHandle (STD_OUTPUT_HANDLE);
-
-	SetConsoleTextAttribute (consoleHandle, colour);
-	vprintf (format, args);
-	SetConsoleTextAttribute (consoleHandle, FOREGROUND_BLUE | FOREGROUND_GREEN | FOREGROUND_RED);
+	LogV ("Loader", colour == ERROR_COLOUR ? "ERROR" : colour == WARNING_COLOUR ? "WARN" : "INFO", format, args);
 
 	va_end (args);
+}
+
+bool
+InstallHook (const char *name, void *target, void *replacement, void **original) {
+	MH_STATUS status = MH_Initialize ();
+	if (status == MH_OK || status == MH_ERROR_ALREADY_INITIALIZED) {
+		status = MH_CreateHook (target, replacement, original);
+		if (status == MH_OK) status = MH_EnableHook (target);
+	}
+	Log ("Loader", status == MH_OK ? "INFO" : "ERROR", "Hook %s at %p: %s", name, target, MH_StatusToString (status));
+	return status == MH_OK;
 }
