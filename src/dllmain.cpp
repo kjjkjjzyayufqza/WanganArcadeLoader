@@ -350,7 +350,7 @@ HOOK (i32, ShowMouse, PROC_ADDRESS ("user32.dll", "ShowCursor"), i32 show) { ret
 HOOK (HWND, WindowCreateW, PROC_ADDRESS ("user32.dll", "CreateWindowExW"), int styleEx, wchar_t *className, wchar_t *windowName, int style, int x, int y, int width, int height, HWND parent,
       void *menu, void *instance, void *param) {
 	HWND handle = originalWindowCreateW (styleEx, className, windowName, style, x, y, width, height, parent, menu, instance, param);
-	if (windowName != 0 && windowHandle == 0 && wcscmp (windowName, L"湾岸ミッドナイトMAXIMUM TUNE 6RR") == 0) {
+	if (windowName != 0 && windowHandle == 0 && wcscmp (windowName, L"\u6E7E\u5CB8\u30DF\u30C3\u30C9\u30CA\u30A4\u30C8MAXIMUM TUNE 6RR") == 0) {
 		auto configPath      = std::filesystem::current_path () / "keyconfig.toml";
 		toml_table_t *config = openConfig (configPath);
 		if (config) {

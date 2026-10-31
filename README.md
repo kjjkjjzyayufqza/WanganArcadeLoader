@@ -1,53 +1,54 @@
 # WanganArcadeLoader
 
-Windows x64 加载器与运行时接口适配的概念验证（PoC）项目，用于研究接口兼容、输入映射和渲染参数控制。主要构建产物为 `bngrw.dll`。
+A Windows x64 loader and runtime interface adaptation proof of concept (PoC) for studying interface compatibility, input mapping, and rendering controls. The primary build artifact is `bngrw.dll`.
 
-本项目基于 [Taatsuuyaa/WanganArcadeLoader](https://github.com/Taatsuuyaa/WanganArcadeLoader) 继续维护，保留上游来源、版权声明与许可证。
+This project continues development from [Taatsuuyaa/WanganArcadeLoader](https://github.com/Taatsuuyaa/WanganArcadeLoader), preserving the upstream attribution, copyright notices, and license.
 
-## 项目范围
+## Scope
 
-本仓库提供加载器实现、构建脚本和配置文件。运行所需的外部应用程序、专有内容资源、固件、授权凭证与在线服务不由本项目提供。
+This repository provides the loader implementation, build scripts, and configuration files. External applications, proprietary content, firmware, authorization credentials, and online services required at runtime are not supplied by this project.
 
-- 运行时接口适配与配置读取。
-- 键盘及控制器输入映射。
-- 窗口、分辨率、帧率与采样参数控制。
-- 本地诊断日志和构建辅助工具。
+- Runtime interface adaptation and configuration loading.
+- Keyboard and controller input mapping.
+- Window, resolution, frame rate, and sampling controls.
+- Local diagnostic logging and build utilities.
 
-实现依赖特定目标程序的版本与接口布局，兼容性应单独验证。本项目仍为实验性原型，不承诺适用于任意程序或版本。
+The implementation depends on specific target versions and interface layouts. Validate compatibility separately. This is an experimental prototype, with no guarantee of compatibility with arbitrary applications or versions.
 
-## 构建
+## Build
 
-环境要求：Windows x64、Python 3.11 或更新版本、Git、MinGW-w64 GCC、NASM 和 Ninja。
+Requirements: Windows x64, Python 3.11 or newer, Git, MinGW-w64 GCC, NASM, and Ninja.
 
-在仓库根目录运行：
+Run from the repository root:
 
 ```powershell
 .\build.bat
 ```
 
-可通过参数指定编译工具链位置与并行任务数：
+To select a compiler toolchain and parallel job count:
 
 ```powershell
 .\build.bat -ToolchainRoot $env:MINGW_ROOT -Jobs 4
 ```
 
-脚本会在需要时安装项目本地的 Meson，并按仓库中的依赖定义获取构建依赖。输出位于 `out/`，包括 `bngrw.dll` 和随附配置文件。
+The script installs a project-local copy of Meson when needed and obtains dependencies using the definitions in this repository. Output is written to `out/`, including `bngrw.dll` and the accompanying configuration files.
 
-构建输出、下载缓存和本机工具链配置不纳入版本控制。部署或替换现有文件前，请先确认目标版本兼容并保留可恢复的备份。
+Build output, download caches, and machine-specific toolchain settings are excluded from version control. Confirm target compatibility and retain a recoverable backup before deploying or replacing existing files.
 
-## 配置
+## Configuration
 
-- `dist/config.toml`：运行方式、窗口和渲染参数。
-- `dist/keyconfig.toml`：键盘与控制器映射示例。
-- `AGENTS.md`：贡献流程、Git 身份与隐私检查规则。
+- `dist/config.toml`: runtime, window, and rendering options.
+- `dist/keyconfig.toml`: example keyboard and controller mappings.
+- [RULES.md](RULES.md): English-only content and contribution policy.
+- [AGENTS.md](AGENTS.md): contribution workflow, Git identity, and privacy checks.
 
-个人配置、导入资料、诊断日志和备份仅供本地使用。提交问题或修改时，应先移除个人路径、账号信息、设备标识与其他敏感内容。
+Keep personal configuration, imported profiles, diagnostic logs, and backups local. Remove personal paths, account information, device identifiers, and other sensitive data before submitting reports or changes.
 
-## 使用与分发条款
+## Usage and distribution terms
 
-1. **开源许可**：本项目按 GNU General Public License v3.0（GPLv3）提供。完整授权条件以仓库中的 [LICENSE](LICENSE) 为准；本说明不替代或缩减许可证授予的权利。
-2. **修改与再分发**：修改或分发本项目时，应遵守 GPLv3 对版权及许可通知、修改说明、对应源代码和适用授权条件的要求。分发二进制版本时，也应按许可证要求提供对应源代码或相应获取方式。
-3. **第三方权利**：本项目的开源授权不替代外部专有程序、内容资源、商标或服务所需的独立授权。使用者应自行取得相关程序、资料及环境所需的合法授权。依赖和可选组件分别受其各自许可证约束。
-4. **项目归属**：本项目为独立维护的派生项目。项目名称及来源说明用于识别和归属，不表示获得任何第三方的认可、赞助或支持。
-5. **无担保与责任限制**：在适用法律允许的范围内，本软件按“现状”提供，不附带适销性、特定用途适用性等明示或默示担保。损害责任限制以 GPLv3 第 15、16 条及适用法律为准。
-6. **隐私与贡献**：不得将个人信息、凭据、私钥、授权资料、私有数据或包含这些内容的日志及截图提交到仓库。贡献前应遵守 [AGENTS.md](AGENTS.md)，完成内容审查及隐私检查，并使用经确认的 GitHub 身份和专属 noreply 地址。
+1. **License:** This project is provided under the GNU General Public License v3.0 (GPLv3). The complete terms in [LICENSE](LICENSE) govern its use. This summary does not replace the license or reduce the rights it grants.
+2. **Modification and redistribution:** Follow the GPLv3 requirements for copyright and license notices, modification notices, Corresponding Source, and applicable licensing conditions. Binary distributions must also satisfy the license's requirements for providing Corresponding Source or an applicable means of obtaining it.
+3. **Third-party rights:** This project's open-source license does not replace separate authorization required for external proprietary applications, content, trademarks, or services. Obtain the necessary rights for the applications, materials, and environments you use. Dependencies and optional components remain subject to their respective licenses.
+4. **Attribution and affiliation:** This is an independently maintained derivative project. Names and source references identify the project and its origins; they do not imply third-party endorsement, sponsorship, or support.
+5. **Warranty and liability:** To the extent permitted by applicable law, the software is provided "as is," without express or implied warranties, including merchantability or fitness for a particular purpose. Warranty disclaimers and limitations of liability are governed by GPLv3 Sections 15 and 16 and applicable law.
+6. **Privacy and contributions:** Do not commit personal information, credentials, private keys, authorization materials, private data, or logs and screenshots containing them. Follow [RULES.md](RULES.md) and [AGENTS.md](AGENTS.md), review the content, run the privacy checks, and use a verified GitHub identity with its account-specific noreply address. All contributions and project communications must be in English.

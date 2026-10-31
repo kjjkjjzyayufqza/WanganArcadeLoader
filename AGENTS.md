@@ -1,5 +1,14 @@
 # Repository rules
 
+## English only
+
+- Follow [RULES.md](RULES.md) for the mandatory English-only policy.
+- All repository-owned text, names, comments, messages, documentation,
+  contributions, and assistant responses must be in English.
+- Do not introduce Chinese characters, Chinese punctuation, or bilingual text.
+- Check the complete current tracked text before publishing. Preserve published
+  history and required upstream license and attribution notices.
+
 ## Fork workflow
 
 - Work in this fork. `origin` is the approved fork; `upstream` is fetch-only.
